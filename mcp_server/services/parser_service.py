@@ -1,7 +1,7 @@
 """
-文件解析服务
+File Parser Service
 
-提供txt格式新闻数据和YAML配置文件的解析功能。
+Provides parsing functionality for txt format news data and YAML configuration files.
 """
 
 import re
@@ -16,59 +16,59 @@ from .cache_service import get_cache
 
 
 class ParserService:
-    """文件解析服务类"""
+    """File parser service class"""
 
     def __init__(self, project_root: str = None):
         """
-        初始化解析服务
+        Initialize parser service
 
         Args:
-            project_root: 项目根目录，默认为当前目录的父目录
+            project_root: Project root directory, defaults to parent of current directory
         """
         if project_root is None:
-            # 获取当前文件所在目录的父目录的父目录
+            # Get parent directory of current file's parent directory
             current_file = Path(__file__)
             self.project_root = current_file.parent.parent.parent
         else:
             self.project_root = Path(project_root)
 
-        # 初始化缓存服务
+        # Initialize cache service
         self.cache = get_cache()
 
     @staticmethod
     def clean_title(title: str) -> str:
         """
-        清理标题文本
+        Clean title text
 
         Args:
-            title: 原始标题
+            title: Original title
 
         Returns:
-            清理后的标题
+            Cleaned title
         """
-        # 移除多余空白
+        # Remove extra whitespace
         title = re.sub(r'\s+', ' ', title)
-        # 移除特殊字符
+        # Remove special characters
         title = title.strip()
         return title
 
     def parse_txt_file(self, file_path: Path) -> Tuple[Dict, Dict]:
         """
-        解析单个txt文件的标题数据
+        Parse title data from a single txt file
 
         Args:
-            file_path: txt文件路径
+            file_path: Path to txt file
 
         Returns:
-            (titles_by_id, id_to_name) 元组
+            (titles_by_id, id_to_name) tuple
             - titles_by_id: {platform_id: {title: {ranks, url, mobileUrl}}}
             - id_to_name: {platform_id: platform_name}
 
         Raises:
-            FileParseError: 文件解析错误
+            FileParseError: File parsing error
         """
         if not file_path.exists():
-            raise FileParseError(str(file_path), "文件不存在")
+            raise FileParseError(str(file_path), "File does not exist")
 
         titles_by_id = {}
         id_to_name = {}
@@ -86,7 +86,7 @@ class ParserService:
                     if len(lines) < 2:
                         continue
 
-                    # 解析header: id | name 或 id
+                    # Parse header: id | name or id
                     header_line = lines[0].strip()
                     if " | " in header_line:
                         parts = header_line.split(" | ", 1)
@@ -99,26 +99,26 @@ class ParserService:
 
                     titles_by_id[source_id] = {}
 
-                    # 解析标题行
+                    # Parse title lines
                     for line in lines[1:]:
                         if line.strip():
                             try:
                                 title_part = line.strip()
                                 rank = None
 
-                                # 提取排名
+                                # Extract rank
                                 if ". " in title_part and title_part.split(". ")[0].isdigit():
                                     rank_str, title_part = title_part.split(". ", 1)
                                     rank = int(rank_str)
 
-                                # 提取 MOBILE URL
+                                # Extract MOBILE URL
                                 mobile_url = ""
                                 if " [MOBILE:" in title_part:
                                     title_part, mobile_part = title_part.rsplit(" [MOBILE:", 1)
                                     if mobile_part.endswith("]"):
                                         mobile_url = mobile_part[:-1]
 
-                                # 提取 URL
+                                # Extract URL
                                 url = ""
                                 if " [URL:" in title_part:
                                     title_part, url_part = title_part.rsplit(" [URL:", 1)
@@ -135,7 +135,7 @@ class ParserService:
                                 }
 
                             except Exception as e:
-                                # 忽略单行解析错误
+                                # Ignore single line parsing errors
                                 continue
 
         except Exception as e:
@@ -145,13 +145,13 @@ class ParserService:
 
     def get_date_folder_name(self, date: datetime = None) -> str:
         """
-        获取日期文件夹名称
+        Get date folder name
 
         Args:
-            date: 日期对象，默认为今天
+            date: Date object, defaults to today
 
         Returns:
-            文件夹名称，格式: YYYY年MM月DD日
+            Folder name in format: YYYY年MM月DD日
         """
         if date is None:
             date = datetime.now()
@@ -163,69 +163,69 @@ class ParserService:
         platform_ids: Optional[List[str]] = None
     ) -> Tuple[Dict, Dict, Dict]:
         """
-        读取指定日期的所有标题文件（带缓存）
+        Read all title files for specified date (with caching)
 
         Args:
-            date: 日期对象，默认为今天
-            platform_ids: 平台ID列表，None表示所有平台
+            date: Date object, defaults to today
+            platform_ids: Platform ID list, None means all platforms
 
         Returns:
-            (all_titles, id_to_name, all_timestamps) 元组
+            (all_titles, id_to_name, all_timestamps) tuple
             - all_titles: {platform_id: {title: {ranks, url, mobileUrl, ...}}}
             - id_to_name: {platform_id: platform_name}
             - all_timestamps: {filename: timestamp}
 
         Raises:
-            DataNotFoundError: 数据不存在
+            DataNotFoundError: Data not found
         """
-        # 生成缓存键
+        # Generate cache key
         date_str = self.get_date_folder_name(date)
         platform_key = ','.join(sorted(platform_ids)) if platform_ids else 'all'
         cache_key = f"read_all_titles:{date_str}:{platform_key}"
 
-        # 尝试从缓存获取
-        # 对于历史数据（非今天），使用更长的缓存时间（1小时）
-        # 对于今天的数据，使用较短的缓存时间（15分钟），因为可能有新数据
+        # Try to get from cache
+        # For historical data (not today), use longer cache time (1 hour)
+        # For today's data, use shorter cache time (15 minutes) as new data may arrive
         is_today = (date is None) or (date.date() == datetime.now().date())
-        ttl = 900 if is_today else 3600  # 15分钟 vs 1小时
+        ttl = 900 if is_today else 3600  # 15 minutes vs 1 hour
 
         cached = self.cache.get(cache_key, ttl=ttl)
         if cached:
             return cached
 
-        # 缓存未命中，读取文件
+        # Cache miss, read files
         date_folder = self.get_date_folder_name(date)
         txt_dir = self.project_root / "output" / date_folder / "txt"
 
         if not txt_dir.exists():
             raise DataNotFoundError(
-                f"未找到 {date_folder} 的数据目录",
-                suggestion="请先运行爬虫或检查日期是否正确"
+                f"Data directory for {date_folder} not found",
+                suggestion="Please run the crawler first or check if the date is correct"
             )
 
         all_titles = {}
         id_to_name = {}
         all_timestamps = {}
 
-        # 读取所有txt文件
+        # Read all txt files
         txt_files = sorted(txt_dir.glob("*.txt"))
 
         if not txt_files:
             raise DataNotFoundError(
-                f"{date_folder} 没有数据文件",
-                suggestion="请等待爬虫任务完成"
+                f"No data files for {date_folder}",
+                suggestion="Please wait for crawler task to complete"
             )
 
         for txt_file in txt_files:
             try:
                 titles_by_id, file_id_to_name = self.parse_txt_file(txt_file)
 
-                # 更新id_to_name
+                # Update id_to_name
                 id_to_name.update(file_id_to_name)
 
-                # 合并标题数据
+                # Merge title data
                 for platform_id, titles in titles_by_id.items():
-                    # 如果指定了平台过滤
+                    # If platform filter is specified
                     if platform_ids and platform_id not in platform_ids:
                         continue
 
@@ -234,26 +234,26 @@ class ParserService:
 
                     for title, info in titles.items():
                         if title in all_titles[platform_id]:
-                            # 合并排名
+                            # Merge ranks
                             all_titles[platform_id][title]["ranks"].extend(info["ranks"])
                         else:
                             all_titles[platform_id][title] = info.copy()
 
-                # 记录文件时间戳
+                # Record file timestamp
                 all_timestamps[txt_file.name] = txt_file.stat().st_mtime
 
             except Exception as e:
-                # 忽略单个文件的解析错误，继续处理其他文件
-                print(f"Warning: 解析文件 {txt_file} 失败: {e}")
+                # Ignore single file parsing errors, continue processing other files
+                print(f"Warning: Failed to parse file {txt_file}: {e}")
                 continue
 
         if not all_titles:
             raise DataNotFoundError(
-                f"{date_folder} 没有有效的数据",
-                suggestion="请检查数据文件格式或重新运行爬虫"
+                f"No valid data for {date_folder}",
+                suggestion="Please check data file format or re-run the crawler"
             )
 
-        # 缓存结果
+        # Cache result
         result = (all_titles, id_to_name, all_timestamps)
         self.cache.set(cache_key, result)
 
@@ -261,16 +261,16 @@ class ParserService:
 
     def parse_yaml_config(self, config_path: str = None) -> dict:
         """
-        解析YAML配置文件
+        Parse YAML configuration file
 
         Args:
-            config_path: 配置文件路径，默认为 config/config.yaml
+            config_path: Config file path, defaults to config/config.yaml
 
         Returns:
-            配置字典
+            Configuration dictionary
 
         Raises:
-            FileParseError: 配置文件解析错误
+            FileParseError: Config file parsing error
         """
         if config_path is None:
             config_path = self.project_root / "config" / "config.yaml"
@@ -278,7 +278,7 @@ class ParserService:
             config_path = Path(config_path)
 
         if not config_path.exists():
-            raise FileParseError(str(config_path), "配置文件不存在")
+            raise FileParseError(str(config_path), "Config file does not exist")
 
         try:
             with open(config_path, "r", encoding="utf-8") as f:
@@ -289,16 +289,16 @@ class ParserService:
 
     def parse_frequency_words(self, words_file: str = None) -> List[Dict]:
         """
-        解析关键词配置文件
+        Parse keyword configuration file
 
         Args:
-            words_file: 关键词文件路径，默认为 config/frequency_words.txt
+            words_file: Keywords file path, defaults to config/frequency_words.txt
 
         Returns:
-            词组列表
+            Word groups list
 
         Raises:
-            FileParseError: 文件解析错误
+            FileParseError: File parsing error
         """
         if words_file is None:
             words_file = self.project_root / "config" / "frequency_words.txt"
@@ -317,7 +317,7 @@ class ParserService:
                     if not line or line.startswith("#"):
                         continue
 
-                    # 使用 | 分隔符
+                    # Use | as separator
                     parts = [p.strip() for p in line.split("|")]
                     if not parts:
                         continue
@@ -337,13 +337,13 @@ class ParserService:
                             if not word:
                                 continue
                             if word.endswith("+"):
-                                # 必须词
+                                # Required word
                                 group["required"].append(word[:-1])
                             elif word.endswith("!"):
-                                # 过滤词
+                                # Filter word
                                 group["filter_words"].append(word[:-1])
                             else:
-                                # 普通词
+                                # Normal word
                                 group["normal"].append(word)
 
                     if group["required"] or group["normal"]:

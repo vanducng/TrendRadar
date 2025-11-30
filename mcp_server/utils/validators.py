@@ -1,7 +1,7 @@
 """
-参数验证工具
+Parameter Validation Tools
 
-提供统一的参数验证功能。
+Provides unified parameter validation functionality.
 """
 
 from datetime import datetime
@@ -15,17 +15,17 @@ from .date_parser import DateParser
 
 def get_supported_platforms() -> List[str]:
     """
-    从 config.yaml 动态获取支持的平台列表
+    Dynamically get supported platform list from config.yaml
 
     Returns:
-        平台ID列表
+        Platform ID list
 
     Note:
-        - 读取失败时返回空列表，允许所有平台通过（降级策略）
-        - 平台列表来自 config/config.yaml 中的 platforms 配置
+        - Returns empty list on read failure, allowing all platforms (fallback strategy)
+        - Platform list comes from platforms configuration in config/config.yaml
     """
     try:
-        # 获取 config.yaml 路径（相对于当前文件）
+        # Get config.yaml path (relative to current file)
         current_dir = os.path.dirname(os.path.abspath(__file__))
         config_path = os.path.join(current_dir, "..", "..", "config", "config.yaml")
         config_path = os.path.normpath(config_path)
@@ -35,53 +35,53 @@ def get_supported_platforms() -> List[str]:
             platforms = config.get('platforms', [])
             return [p['id'] for p in platforms if 'id' in p]
     except Exception as e:
-        # 降级方案：返回空列表，允许所有平台
-        print(f"警告：无法加载平台配置 ({config_path}): {e}")
+        # Fallback: return empty list, allow all platforms
+        print(f"Warning: Unable to load platform configuration ({config_path}): {e}")
         return []
 
 
 def validate_platforms(platforms: Optional[List[str]]) -> List[str]:
     """
-    验证平台列表
+    Validate platform list
 
     Args:
-        platforms: 平台ID列表，None表示使用 config.yaml 中配置的所有平台
+        platforms: Platform ID list, None means use all platforms from config.yaml
 
     Returns:
-        验证后的平台列表
+        Validated platform list
 
     Raises:
-        InvalidParameterError: 平台不支持
+        InvalidParameterError: Platform not supported
 
     Note:
-        - platforms=None 时，返回 config.yaml 中配置的平台列表
-        - 会验证平台ID是否在 config.yaml 的 platforms 配置中
-        - 配置加载失败时，允许所有平台通过（降级策略）
+        - When platforms=None, returns platform list from config.yaml
+        - Validates whether platform ID exists in config.yaml platforms configuration
+        - When config loading fails, allows all platforms (fallback strategy)
     """
     supported_platforms = get_supported_platforms()
 
     if platforms is None:
-        # 返回配置文件中的平台列表（用户的默认配置）
+        # Return platform list from config file (user's default configuration)
         return supported_platforms if supported_platforms else []
 
     if not isinstance(platforms, list):
-        raise InvalidParameterError("platforms 参数必须是列表类型")
+        raise InvalidParameterError("platforms parameter must be a list type")
 
     if not platforms:
-        # 空列表时，返回配置文件中的平台列表
+        # When empty list, return platform list from config file
         return supported_platforms if supported_platforms else []
 
-    # 如果配置加载失败（supported_platforms为空），允许所有平台通过
+    # If config loading failed (supported_platforms is empty), allow all platforms
     if not supported_platforms:
-        print("警告：平台配置未加载，跳过平台验证")
+        print("Warning: Platform configuration not loaded, skipping platform validation")
         return platforms
 
-    # 验证每个平台是否在配置中
+    # Validate each platform exists in configuration
     invalid_platforms = [p for p in platforms if p not in supported_platforms]
     if invalid_platforms:
         raise InvalidParameterError(
-            f"不支持的平台: {', '.join(invalid_platforms)}",
-            suggestion=f"支持的平台（来自config.yaml）: {', '.join(supported_platforms)}"
+            f"Unsupported platforms: {', '.join(invalid_platforms)}",
+            suggestion=f"Supported platforms (from config.yaml): {', '.join(supported_platforms)}"
         )
 
     return platforms
@@ -89,32 +89,32 @@ def validate_platforms(platforms: Optional[List[str]]) -> List[str]:
 
 def validate_limit(limit: Optional[int], default: int = 20, max_limit: int = 1000) -> int:
     """
-    验证数量限制参数
+    Validate limit parameter
 
     Args:
-        limit: 限制数量
-        default: 默认值
-        max_limit: 最大限制
+        limit: Limit value
+        default: Default value
+        max_limit: Maximum limit
 
     Returns:
-        验证后的限制值
+        Validated limit value
 
     Raises:
-        InvalidParameterError: 参数无效
+        InvalidParameterError: Parameter invalid
     """
     if limit is None:
         return default
 
     if not isinstance(limit, int):
-        raise InvalidParameterError("limit 参数必须是整数类型")
+        raise InvalidParameterError("limit parameter must be an integer type")
 
     if limit <= 0:
-        raise InvalidParameterError("limit 必须大于0")
+        raise InvalidParameterError("limit must be greater than 0")
 
     if limit > max_limit:
         raise InvalidParameterError(
-            f"limit 不能超过 {max_limit}",
-            suggestion=f"请使用分页或降低limit值"
+            f"limit cannot exceed {max_limit}",
+            suggestion=f"Please use pagination or reduce limit value"
         )
 
     return limit
@@ -122,52 +122,52 @@ def validate_limit(limit: Optional[int], default: int = 20, max_limit: int = 100
 
 def validate_date(date_str: str) -> datetime:
     """
-    验证日期格式
+    Validate date format
 
     Args:
-        date_str: 日期字符串 (YYYY-MM-DD)
+        date_str: Date string (YYYY-MM-DD)
 
     Returns:
-        datetime对象
+        datetime object
 
     Raises:
-        InvalidParameterError: 日期格式错误
+        InvalidParameterError: Invalid date format
     """
     try:
         return datetime.strptime(date_str, "%Y-%m-%d")
     except ValueError:
         raise InvalidParameterError(
-            f"日期格式错误: {date_str}",
-            suggestion="请使用 YYYY-MM-DD 格式，例如: 2025-10-11"
+            f"Invalid date format: {date_str}",
+            suggestion="Please use YYYY-MM-DD format, e.g.: 2025-10-11"
         )
 
 
 def validate_date_range(date_range: Optional[dict]) -> Optional[tuple]:
     """
-    验证日期范围
+    Validate date range
 
     Args:
-        date_range: 日期范围字典 {"start": "YYYY-MM-DD", "end": "YYYY-MM-DD"}
+        date_range: Date range dictionary {"start": "YYYY-MM-DD", "end": "YYYY-MM-DD"}
 
     Returns:
-        (start_date, end_date) 元组，或 None
+        (start_date, end_date) tuple, or None
 
     Raises:
-        InvalidParameterError: 日期范围无效
+        InvalidParameterError: Invalid date range
     """
     if date_range is None:
         return None
 
     if not isinstance(date_range, dict):
-        raise InvalidParameterError("date_range 必须是字典类型")
+        raise InvalidParameterError("date_range must be a dictionary type")
 
     start_str = date_range.get("start")
     end_str = date_range.get("end")
 
     if not start_str or not end_str:
         raise InvalidParameterError(
-            "date_range 必须包含 start 和 end 字段",
-            suggestion='例如: {"start": "2025-10-01", "end": "2025-10-11"}'
+            "date_range must contain start and end fields",
+            suggestion='Example: {"start": "2025-10-01", "end": "2025-10-11"}'
         )
 
     start_date = validate_date(start_str)
@@ -175,25 +175,25 @@ def validate_date_range(date_range: Optional[dict]) -> Optional[tuple]:
 
     if start_date > end_date:
         raise InvalidParameterError(
-            "开始日期不能晚于结束日期",
+            "Start date cannot be later than end date",
             suggestion=f"start: {start_str}, end: {end_str}"
         )
 
-    # 检查日期是否在未来
+    # Check if date is in the future
     today = datetime.now().date()
     if start_date.date() > today or end_date.date() > today:
-        # 获取可用日期范围提示
+        # Get available date range hint
         try:
             from ..services.data_service import DataService
             data_service = DataService()
             earliest, latest = data_service.get_available_date_range()
 
             if earliest and latest:
-                available_range = f"{earliest.strftime('%Y-%m-%d')} 至 {latest.strftime('%Y-%m-%d')}"
+                available_range = f"{earliest.strftime('%Y-%m-%d')} to {latest.strftime('%Y-%m-%d')}"
             else:
-                available_range = "无可用数据"
+                available_range = "No available data"
         except Exception:
-            available_range = "未知（请检查 output 目录）"
+            available_range = "Unknown (please check output directory)"
 
         future_dates = []
         if start_date.date() > today:
@@ -202,8 +202,8 @@ def validate_date_range(date_range: Optional[dict]) -> Optional[tuple]:
             future_dates.append(end_str)
 
         raise InvalidParameterError(
-            f"不允许查询未来日期: {', '.join(future_dates)}（当前日期: {today.strftime('%Y-%m-%d')}）",
-            suggestion=f"当前可用数据范围: {available_range}"
+            f"Future dates not allowed: {', '.join(future_dates)} (current date: {today.strftime('%Y-%m-%d')})",
+            suggestion=f"Available data range: {available_range}"
         )
 
     return (start_date, end_date)
@@ -211,32 +211,32 @@ def validate_date_range(date_range: Optional[dict]) -> Optional[tuple]:
 
 def validate_keyword(keyword: str) -> str:
     """
-    验证关键词
+    Validate keyword
 
     Args:
-        keyword: 搜索关键词
+        keyword: Search keyword
 
     Returns:
-        处理后的关键词
+        Processed keyword
 
     Raises:
-        InvalidParameterError: 关键词无效
+        InvalidParameterError: Invalid keyword
     """
     if not keyword:
-        raise InvalidParameterError("keyword 不能为空")
+        raise InvalidParameterError("keyword cannot be empty")
 
     if not isinstance(keyword, str):
-        raise InvalidParameterError("keyword 必须是字符串类型")
+        raise InvalidParameterError("keyword must be a string type")
 
     keyword = keyword.strip()
 
     if not keyword:
-        raise InvalidParameterError("keyword 不能为空白字符")
+        raise InvalidParameterError("keyword cannot be whitespace only")
 
     if len(keyword) > 100:
         raise InvalidParameterError(
-            "keyword 长度不能超过100个字符",
-            suggestion="请使用更简洁的关键词"
+            "keyword length cannot exceed 100 characters",
+            suggestion="Please use a more concise keyword"
         )
 
     return keyword
@@ -244,46 +244,46 @@ def validate_keyword(keyword: str) -> str:
 
 def validate_top_n(top_n: Optional[int], default: int = 10) -> int:
     """
-    验证TOP N参数
+    Validate TOP N parameter
 
     Args:
-        top_n: TOP N数量
-        default: 默认值
+        top_n: TOP N count
+        default: Default value
 
     Returns:
-        验证后的值
+        Validated value
 
     Raises:
-        InvalidParameterError: 参数无效
+        InvalidParameterError: Parameter invalid
     """
     return validate_limit(top_n, default=default, max_limit=100)
 
 
 def validate_mode(mode: Optional[str], valid_modes: List[str], default: str) -> str:
     """
-    验证模式参数
+    Validate mode parameter
 
     Args:
-        mode: 模式字符串
-        valid_modes: 有效模式列表
-        default: 默认模式
+        mode: Mode string
+        valid_modes: Valid mode list
+        default: Default mode
 
     Returns:
-        验证后的模式
+        Validated mode
 
     Raises:
-        InvalidParameterError: 模式无效
+        InvalidParameterError: Invalid mode
     """
     if mode is None:
         return default
 
     if not isinstance(mode, str):
-        raise InvalidParameterError("mode 必须是字符串类型")
+        raise InvalidParameterError("mode must be a string type")
 
     if mode not in valid_modes:
         raise InvalidParameterError(
-            f"无效的模式: {mode}",
-            suggestion=f"支持的模式: {', '.join(valid_modes)}"
+            f"Invalid mode: {mode}",
+            suggestion=f"Supported modes: {', '.join(valid_modes)}"
         )
 
     return mode
@@ -291,16 +291,16 @@ def validate_mode(mode: Optional[str], valid_modes: List[str], default: str) -> 
 
 def validate_config_section(section: Optional[str]) -> str:
     """
-    验证配置节参数
+    Validate config section parameter
 
     Args:
-        section: 配置节名称
+        section: Config section name
 
     Returns:
-        验证后的配置节
+        Validated config section
 
     Raises:
-        InvalidParameterError: 配置节无效
+        InvalidParameterError: Invalid config section
     """
     valid_sections = ["all", "crawler", "push", "keywords", "weights"]
     return validate_mode(section, valid_sections, "all")
@@ -312,40 +312,39 @@ def validate_date_query(
     max_days_ago: int = 365
 ) -> datetime:
     """
-    验证并解析日期查询字符串
+    Validate and parse date query string
 
     Args:
-        date_query: 日期查询字符串
-        allow_future: 是否允许未来日期
-        max_days_ago: 允许查询的最大天数
+        date_query: Date query string
+        allow_future: Whether to allow future dates
+        max_days_ago: Maximum days allowed for query
 
     Returns:
-        解析后的datetime对象
+        Parsed datetime object
 
     Raises:
-        InvalidParameterError: 日期查询无效
+        InvalidParameterError: Invalid date query
 
     Examples:
-        >>> validate_date_query("昨天")
+        >>> validate_date_query("yesterday")
         datetime(2025, 10, 10)
         >>> validate_date_query("2025-10-10")
         datetime(2025, 10, 10)
     """
     if not date_query:
         raise InvalidParameterError(
-            "日期查询字符串不能为空",
-            suggestion="请提供日期查询，如：今天、昨天、2025-10-10"
+            "Date query string cannot be empty",
+            suggestion="Please provide a date query, e.g.: today, yesterday, 2025-10-10"
         )
 
-    # 使用DateParser解析日期
+    # Use DateParser to parse date
     parsed_date = DateParser.parse_date_query(date_query)
 
-    # 验证日期不在未来
+    # Validate date is not in the future
     if not allow_future:
         DateParser.validate_date_not_future(parsed_date)
 
-    # 验证日期不太久远
+    # Validate date is not too old
     DateParser.validate_date_not_too_old(parsed_date, max_days=max_days_ago)
 
     return parsed_date
-

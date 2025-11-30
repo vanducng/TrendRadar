@@ -1,5 +1,5 @@
 """
-服务层模块
+Services Module
 
-提供数据访问、缓存、解析等核心服务。
+Provides core services including data access, caching, and parsing.
 """
