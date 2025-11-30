@@ -19,6 +19,12 @@ import pytz
 import requests
 import yaml
 
+try:
+    import resend
+    RESEND_AVAILABLE = True
+except ImportError:
+    RESEND_AVAILABLE = False
+
 
 VERSION = "3.4.1"
 
@@ -185,6 +191,17 @@ def load_config():
         "EMAIL_SMTP_PORT", ""
     ).strip() or webhooks.get("email_smtp_port", "")
 
+    # Resend config
+    config["RESEND_API_KEY"] = os.environ.get(
+        "RESEND_API_KEY", ""
+    ).strip() or webhooks.get("resend_api_key", "")
+    config["RESEND_FROM_EMAIL"] = os.environ.get(
+        "RESEND_FROM_EMAIL", ""
+    ).strip() or webhooks.get("resend_from_email", "")
+    config["RESEND_TO_EMAIL"] = os.environ.get(
+        "RESEND_TO_EMAIL", ""
+    ).strip() or webhooks.get("resend_to_email", "")
+
     # ntfy配置
     config["NTFY_SERVER_URL"] = (
         os.environ.get("NTFY_SERVER_URL", "").strip()
@@ -228,6 +245,10 @@ def load_config():
     if config["EMAIL_FROM"] and config["EMAIL_PASSWORD"] and config["EMAIL_TO"]:
         from_source = "环境变量" if os.environ.get("EMAIL_FROM") else "配置文件"
         notification_sources.append(f"邮件({from_source})")
+
+    if config["RESEND_API_KEY"] and config["RESEND_FROM_EMAIL"] and config["RESEND_TO_EMAIL"]:
+        resend_source = "环境变量" if os.environ.get("RESEND_API_KEY") else "配置文件"
+        notification_sources.append(f"Resend({resend_source})")
 
     if config["NTFY_SERVER_URL"] and config["NTFY_TOPIC"]:
         server_source = "环境变量" if os.environ.get("NTFY_SERVER_URL") else "配置文件"
@@ -3575,6 +3596,9 @@ def send_to_notifications(
     email_to = CONFIG["EMAIL_TO"]
     email_smtp_server = CONFIG.get("EMAIL_SMTP_SERVER", "")
     email_smtp_port = CONFIG.get("EMAIL_SMTP_PORT", "")
+    resend_api_key = CONFIG.get("RESEND_API_KEY", "")
+    resend_from_email = CONFIG.get("RESEND_FROM_EMAIL", "")
+    resend_to_email = CONFIG.get("RESEND_TO_EMAIL", "")
     ntfy_server_url = CONFIG["NTFY_SERVER_URL"]
     ntfy_topic = CONFIG["NTFY_TOPIC"]
     ntfy_token = CONFIG.get("NTFY_TOKEN", "")
@@ -3658,6 +3682,16 @@ def send_to_notifications(
             html_file_path,
             email_smtp_server,
             email_smtp_port,
+        )
+
+    # Send via Resend
+    if resend_api_key and resend_from_email and resend_to_email:
+        results["resend"] = send_to_resend(
+            resend_api_key,
+            resend_from_email,
+            resend_to_email,
+            report_type,
+            html_file_path,
         )
 
     if not results:
@@ -4170,6 +4204,65 @@ TrendRadar 热点分析报告
         print(f"邮件发送失败 [{report_type}]：{e}")
         import traceback
 
+        traceback.print_exc()
+        return False
+
+
+def send_to_resend(
+    api_key: str,
+    from_email: str,
+    to_email: str,
+    report_type: str,
+    html_file_path: str,
+) -> bool:
+    """Send email notification via Resend API"""
+    if not RESEND_AVAILABLE:
+        print("Error: resend package not installed. Run: pip install resend")
+        return False
+
+    try:
+        if not html_file_path or not Path(html_file_path).exists():
+            print(f"Error: HTML file does not exist: {html_file_path}")
+            return False
+
+        print(f"Using HTML file: {html_file_path}")
+        with open(html_file_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+
+        # Set API key
+        resend.api_key = api_key
+
+        # Parse recipients (comma-separated)
+        recipients = [addr.strip() for addr in to_email.split(",")]
+
+        # Prepare email subject
+        beijing_tz = pytz.timezone("Asia/Shanghai")
+        now = datetime.now(beijing_tz)
+        subject = f"TrendRadar {report_type} - {now.strftime('%Y-%m-%d %H:%M')}"
+
+        print(f"Sending email via Resend to {to_email}...")
+        print(f"From: {from_email}")
+
+        # Send email via Resend API
+        params = {
+            "from": f"TrendRadar <{from_email}>",
+            "to": recipients,
+            "subject": subject,
+            "html": html_content,
+        }
+
+        result = resend.Emails.send(params)
+
+        if result and result.get("id"):
+            print(f"Resend email sent successfully [{report_type}] -> {to_email}: {result['id']}")
+            return True
+        else:
+            print(f"Resend API returned invalid response: {result}")
+            return False
+
+    except Exception as e:
+        print(f"Resend email failed [{report_type}]: {e}")
+        import traceback
         traceback.print_exc()
         return False
 

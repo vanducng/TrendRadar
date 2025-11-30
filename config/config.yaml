@@ -83,6 +83,9 @@ notification:
     email_to: "" # Recipient email (use GitHub Secret: EMAIL_TO)
     email_smtp_server: "smtp.gmail.com" # SMTP server address
     email_smtp_port: "587" # SMTP port
+    resend_api_key: "" # Resend API key (use GitHub Secret: RESEND_API_KEY)
+    resend_from_email: "" # Resend sender email (use GitHub Secret: RESEND_FROM_EMAIL)
+    resend_to_email: "" # Resend recipient email (use GitHub Secret: RESEND_TO_EMAIL)
     ntfy_server_url: "https://ntfy.sh" # ntfy服务器地址，默认使用公共服务，可改为自托管地址
     ntfy_topic: "" # ntfy主题名称
     ntfy_token: "" # ntfy访问令牌（可选，用于私有主题）
