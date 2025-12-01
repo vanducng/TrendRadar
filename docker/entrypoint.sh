@@ -1,41 +1,41 @@
 #!/bin/bash
 set -e
 
-# 检查配置文件
+# Check config files
 if [ ! -f "/app/config/config.yaml" ] || [ ! -f "/app/config/frequency_words.txt" ]; then
-    echo "❌ 配置文件缺失"
+    echo "❌ Config files missing"
     exit 1
 fi
 
-# 保存环境变量
+# Save environment variables
 env >> /etc/environment
 
 case "${RUN_MODE:-cron}" in
 "once")
-    echo "🔄 单次执行"
+    echo "🔄 Single execution"
     exec /usr/local/bin/python main.py
     ;;
 "cron")
-    # 生成 crontab
+    # Generate crontab
     echo "${CRON_SCHEDULE:-*/30 * * * *} cd /app && /usr/local/bin/python main.py" > /tmp/crontab
-    
-    echo "📅 生成的crontab内容:"
+
+    echo "📅 Generated crontab content:"
     cat /tmp/crontab
 
     if ! /usr/local/bin/supercronic -test /tmp/crontab; then
-        echo "❌ crontab格式验证失败"
+        echo "❌ Crontab format validation failed"
         exit 1
     fi
 
-    # 立即执行一次（如果配置了）
+    # Execute immediately if configured
     if [ "${IMMEDIATE_RUN:-false}" = "true" ]; then
-        echo "▶️ 立即执行一次"
+        echo "▶️ Executing immediately"
         /usr/local/bin/python main.py
     fi
 
-    echo "⏰ 启动supercronic: ${CRON_SCHEDULE:-*/30 * * * *}"
-    echo "🎯 supercronic 将作为 PID 1 运行"
-    
+    echo "⏰ Starting supercronic: ${CRON_SCHEDULE:-*/30 * * * *}"
+    echo "🎯 supercronic will run as PID 1"
+
     exec /usr/local/bin/supercronic -passthrough-logs /tmp/crontab
     ;;
 *)
