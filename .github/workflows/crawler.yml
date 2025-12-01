@@ -7,9 +7,9 @@ on:
     # Cron expression examples (Note: GitHub Actions uses UTC time):
     # - "0 * * * *"         # Run every hour on the hour (may have slight variance)
     # - "*/30 * * * *"      # Run every 30 minutes
-    # - "*/30 0-14 * * *"   # Every day UTC 0:00-14:00, run every 30 minutes
+    # - "0 */6 * * *"       # Run every 6 hours
     # - "0 0,6,12,18 * * *" # Every day at UTC 0:00,6:00,12:00,18:00
-    - cron: "0 * * * *"
+    - cron: "0 */6 * * *"
   workflow_dispatch:
 
 concurrency:

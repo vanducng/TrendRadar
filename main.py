@@ -555,6 +555,129 @@ class DataFetcher:
                     return None, id_value, alias
         return None, id_value, alias
 
+    # === English Source Fetchers ===
+
+    def fetch_hackernews(self) -> Tuple[Optional[str], str, str]:
+        """Fetch top stories from Hacker News API (no auth required)"""
+        id_value = "hackernews"
+        alias = "Hacker News"
+
+        try:
+            # Get top story IDs
+            top_stories_url = "https://hacker-news.firebaseio.com/v0/topstories.json"
+            response = requests.get(top_stories_url, timeout=10)
+            response.raise_for_status()
+            story_ids = response.json()[:50]  # Get top 50
+
+            items = []
+            for idx, story_id in enumerate(story_ids):
+                try:
+                    item_url = f"https://hacker-news.firebaseio.com/v0/item/{story_id}.json"
+                    item_response = requests.get(item_url, timeout=5)
+                    item_data = item_response.json()
+
+                    if item_data and item_data.get("title"):
+                        items.append({
+                            "title": item_data.get("title", ""),
+                            "url": item_data.get("url", f"https://news.ycombinator.com/item?id={story_id}"),
+                            "mobileUrl": f"https://news.ycombinator.com/item?id={story_id}",
+                            "score": item_data.get("score", 0),
+                        })
+
+                    # Rate limit: small delay between requests
+                    if idx < len(story_ids) - 1:
+                        time.sleep(0.05)
+
+                except Exception as e:
+                    print(f"Failed to fetch HN item {story_id}: {e}")
+                    continue
+
+            result = {"status": "success", "items": items}
+            print(f"Fetched {id_value} successfully ({len(items)} items)")
+            return json.dumps(result), id_value, alias
+
+        except Exception as e:
+            print(f"Request {id_value} failed: {e}")
+            return None, id_value, alias
+
+    def fetch_google_trends(self) -> Tuple[Optional[str], str, str]:
+        """Fetch trending searches from Google Trends via pytrends"""
+        id_value = "googletrends"
+        alias = "Google Trends"
+
+        try:
+            from pytrends.request import TrendReq
+
+            pytrends = TrendReq(hl='en-US', tz=360, timeout=(10, 25))
+
+            # Get trending searches for US
+            trending_df = pytrends.trending_searches(pn='united_states')
+
+            items = []
+            for idx, row in trending_df.iterrows():
+                keyword = row[0]
+                items.append({
+                    "title": keyword,
+                    "url": f"https://trends.google.com/trends/explore?q={requests.utils.quote(keyword)}&geo=US",
+                    "mobileUrl": f"https://trends.google.com/trends/explore?q={requests.utils.quote(keyword)}&geo=US",
+                })
+
+            result = {"status": "success", "items": items}
+            print(f"Fetched {id_value} successfully ({len(items)} items)")
+            return json.dumps(result), id_value, alias
+
+        except ImportError:
+            print(f"pytrends not installed. Run: pip install pytrends")
+            return None, id_value, alias
+        except Exception as e:
+            print(f"Request {id_value} failed: {e}")
+            return None, id_value, alias
+
+    def fetch_reddit(self) -> Tuple[Optional[str], str, str]:
+        """Fetch trending posts from Reddit (placeholder - requires OAuth setup)"""
+        id_value = "reddit"
+        alias = "Reddit Trending"
+
+        # TODO: Implement Reddit OAuth flow
+        # Requires: client_id, client_secret, username, password
+        # Set these in environment variables:
+        #   REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET, REDDIT_USERNAME, REDDIT_PASSWORD
+
+        print(f"Reddit API not configured. Set REDDIT_* environment variables.")
+        print("See: https://www.reddit.com/prefs/apps to create an app")
+
+        # Placeholder: return empty but valid response
+        result = {"status": "success", "items": [
+            {"title": "[Reddit not configured] Set REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET env vars", "url": "https://www.reddit.com/prefs/apps", "mobileUrl": ""}
+        ]}
+        return json.dumps(result), id_value, alias
+
+    def fetch_producthunt(self) -> Tuple[Optional[str], str, str]:
+        """Fetch top products from Product Hunt (placeholder - requires API token)"""
+        id_value = "producthunt"
+        alias = "Product Hunt"
+
+        # TODO: Implement Product Hunt GraphQL API
+        # Requires: developer_token from https://www.producthunt.com/v2/oauth/applications
+        # Set in environment variable: PRODUCTHUNT_TOKEN
+
+        print(f"Product Hunt API not configured. Set PRODUCTHUNT_TOKEN environment variable.")
+        print("See: https://www.producthunt.com/v2/oauth/applications to get token")
+
+        # Placeholder: return empty but valid response
+        result = {"status": "success", "items": [
+            {"title": "[Product Hunt not configured] Set PRODUCTHUNT_TOKEN env var", "url": "https://www.producthunt.com/v2/oauth/applications", "mobileUrl": ""}
+        ]}
+        return json.dumps(result), id_value, alias
+
+    # === English Source Router ===
+    ENGLISH_SOURCES = {
+        "hackernews": "fetch_hackernews",
+        "googletrends": "fetch_google_trends",
+        "reddit": "fetch_reddit",
+        "producthunt": "fetch_producthunt",
+    }
+
     def crawl_websites(
         self,
         ids_list: List[Union[str, Tuple[str, str]]],
@@ -573,7 +696,13 @@ class DataFetcher:
                 name = id_value
 
             id_to_name[id_value] = name
-            response, _, _ = self.fetch_data(id_info)
+
+            # Route to appropriate fetcher based on source type
+            if id_value in self.ENGLISH_SOURCES:
+                fetch_method = getattr(self, self.ENGLISH_SOURCES[id_value])
+                response, _, _ = fetch_method()
+            else:
+                response, _, _ = self.fetch_data(id_info)
 
             if response:
                 try:

@@ -92,26 +92,39 @@ weight:
   hotness_weight: 0.1 # Hotness weight
 
 # Platform names can be customized, only for display, changing names won't affect code operation
+# English sources (built-in fetchers): hackernews, googletrends, reddit, producthunt
+# Chinese sources (via newsnow API): toutiao, baidu, weibo, zhihu, bilibili-hot-search, etc.
 platforms:
-  - id: "toutiao"
-    name: "Toutiao"
-  - id: "baidu"
-    name: "Baidu Hot Search"
-  - id: "wallstreetcn-hot"
-    name: "Wall Street CN"
-  - id: "thepaper"
-    name: "The Paper"
-  - id: "bilibili-hot-search"
-    name: "Bilibili Hot Search"
-  - id: "cls-hot"
-    name: "CLS Hot"
-  - id: "ifeng"
-    name: "iFeng"
-  - id: "tieba"
-    name: "Tieba"
-  - id: "weibo"
-    name: "Weibo"
-  - id: "douyin"
-    name: "Douyin"
-  - id: "zhihu"
-    name: "Zhihu"
+  # === English Sources ===
+  - id: "hackernews"
+    name: "Hacker News"
+  - id: "googletrends"
+    name: "Google Trends"
+  # - id: "reddit"           # Placeholder: requires OAuth setup (see docs)
+  #   name: "Reddit Trending"
+  # - id: "producthunt"      # Placeholder: requires API token (see docs)
+  #   name: "Product Hunt"
+
+  # === Chinese Sources (uncomment to enable) ===
+  # - id: "toutiao"
+  #   name: "Toutiao"
+  # - id: "baidu"
+  #   name: "Baidu Hot Search"
+  # - id: "wallstreetcn-hot"
+  #   name: "Wall Street CN"
+  # - id: "thepaper"
+  #   name: "The Paper"
+  # - id: "bilibili-hot-search"
+  #   name: "Bilibili Hot Search"
+  # - id: "cls-hot"
+  #   name: "CLS Hot"
+  # - id: "ifeng"
+  #   name: "iFeng"
+  # - id: "tieba"
+  #   name: "Tieba"
+  # - id: "weibo"
+  #   name: "Weibo"
+  # - id: "douyin"
+  #   name: "Douyin"
+  # - id: "zhihu"
+  #   name: "Zhihu"
